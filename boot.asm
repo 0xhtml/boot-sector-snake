@@ -1,3 +1,7 @@
+%define DIRECTION [0x0500]
+%define LENGTH [0x0502]
+%define APPLE [0x0504]
+
 org 0x7c00
 
 setup:
@@ -8,9 +12,9 @@ setup:
     mov ch, 0x3f
     int 0x10
 
-    mov [0x0500], word 0x0001
-    mov [0x0502], word 0
-    mov [0x0504], word 0x0c0b
+    mov DIRECTION, word 0x0001
+    mov LENGTH, word 0
+    mov APPLE, word 0x0c0b
 
     mov si, 0x0506
     mov di, 0x0506
@@ -58,35 +62,35 @@ input:
     jne input
 
 down:
-    cmp [0x0500], byte 0x00
+    cmp DIRECTION, byte 0x00
     je input
 
-    mov [0x0500], word 0x0100
+    mov DIRECTION, word 0x0100
     jmp tick
 
 up:
-    cmp [0x0500], byte 0x00
+    cmp DIRECTION, byte 0x00
     je input
 
-    mov [0x0500], word 0xff00
+    mov DIRECTION, word 0xff00
     jmp tick
 
 left:
-    cmp [0x0500], byte 0x00
+    cmp DIRECTION, byte 0x00
     jne input
 
-    mov [0x0500], word 0xffff
+    mov DIRECTION, word 0xffff
     jmp tick
 
 right:
-    cmp [0x0500], byte 0x00
+    cmp DIRECTION, byte 0x00
     jne input
 
-    mov [0x0500], word 0x0001
+    mov DIRECTION, word 0x0001
 
 tick:
     mov dx, [esi]
-    add dx, [0x0500]
+    add dx, DIRECTION
 
     cmp dl, -1
     jle gameover
@@ -114,10 +118,10 @@ tick_loop:
     add si, 2
     mov [esi], dx
 
-    cmp dx, [0x0504]
+    cmp dx, APPLE
     jne render
 
-    add word [0x0502], 2
+    add word LENGTH, 2
 
     mov ah, 0x00
     int 0x1a
@@ -138,7 +142,7 @@ tick_a:
 tick_b:
     inc dh
 
-    mov [0x0504], dx
+    mov APPLE, dx
 
     mov ah, 0x02
     int 0x10
@@ -156,7 +160,7 @@ render:
 
     mov dx, si
     sub dx, di
-    cmp dx, [0x0502]
+    cmp dx, LENGTH
     jle delay
 
     mov ah, 0x02
