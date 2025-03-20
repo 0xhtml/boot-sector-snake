@@ -3,10 +3,15 @@
 %define LIST_START 0x0504
 %define LIST_END 0x0506
 
+%define UP word 0xff00
+%define DOWN word 0x0100
+%define LEFT word 0xffff
+%define RIGHT word 0x0001
+
 org 0x7c00
 
 start:
-    mov [DIRECTION], word 0x0001  ; right
+    mov [DIRECTION], RIGHT
     mov [APPLE], word 0x0c0b
     mov [LIST_START], word 0x0508
     mov [LIST_END], word 0x0508
@@ -48,16 +53,9 @@ tick:
     cmp dh, 24
     jge gameover
 
-    mov si, [LIST_START]
-
-tick_loop:
-    cmp dx, [si]
+    call cmp_snake  ; check if snake is eating itself
+    cmp ax, 1
     je gameover
-
-    add si, 2
-
-    cmp si, [LIST_END]
-    jbe tick_loop
 
     mov ah, 0x02  ; set cursor
     int 0x10
@@ -69,33 +67,33 @@ tick_loop:
     mov [LIST_END], si
 
     cmp dx, [APPLE]
-    jne tick_end
+    jne tick_remove_tail
 
+tick_apple:
     mov ah, 0x00  ; get time
     int 0x1a
 
     imul dx, 29
     add dx, 37
 
+tick_check_l:
     cmp dl, 40
-    jb tick_skip_l
-
-tick_sub_l:
+    jb tick_check_h
     sub dl, 40
-    cmp dl, 40
-    jae tick_sub_l
+    jmp tick_check_l
 
-tick_skip_l:
+tick_check_h:
     cmp dh, 23
-    jb tick_skip_h
-
-tick_sub_h:
+    jb tick_break_check_h
     sub dh, 23
-    cmp dh, 23
-    jae tick_sub_h
+    jmp tick_check_h
 
-tick_skip_h:
+tick_break_check_h:
     inc dh
+
+    call cmp_snake  ; check if apple is on snake
+    cmp ax, 1
+    je tick_apple
 
     mov [APPLE], dx
 
@@ -107,14 +105,14 @@ tick_skip_h:
 
     jmp sleep
 
-tick_end:
+tick_remove_tail:
     mov si, [LIST_START]
     mov dx, [si]
 
     mov ah, 0x02  ; set cursor
     int 0x10
 
-    mov ax, 0x0e20  ; print char, snake char
+    mov ax, 0x0e20  ; print char, space
     int 0x10
 
     add word [LIST_START], 2
@@ -149,28 +147,28 @@ input_down:
     cmp [DIRECTION], byte 0x00
     je input
 
-    mov [DIRECTION], word 0x0100
+    mov [DIRECTION], DOWN
     jmp tick
 
 input_up:
     cmp [DIRECTION], byte 0x00
     je input
 
-    mov [DIRECTION], word 0xff00
+    mov [DIRECTION], UP
     jmp tick
 
 input_left:
     cmp [DIRECTION], byte 0x00
     jne input
 
-    mov [DIRECTION], word 0xffff
+    mov [DIRECTION], LEFT
     jmp tick
 
 input_right:
     cmp [DIRECTION], byte 0x00
     jne input
 
-    mov [DIRECTION], word 0x0001
+    mov [DIRECTION], RIGHT
     jmp tick
 
 gameover:
@@ -191,6 +189,24 @@ gameover_loop:
     jb gameover_loop
 
     jmp $  ; halt
+
+cmp_snake:
+    mov ax, 1
+    mov si, [LIST_START]
+
+cmp_snake_loop:
+    cmp dx, [si]
+    je cmp_snake_ret
+
+    add si, 2
+
+    cmp si, [LIST_END]
+    jbe cmp_snake_loop
+
+    mov ax, 0
+
+cmp_snake_ret:
+    ret
 
 gameover_str db "Game Over!"
 gameover_str_len equ $ - gameover_str
